@@ -5,10 +5,13 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import server.models.Method;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static server.models.Constants.*;
 
@@ -29,7 +32,11 @@ public class WebServer {
         server.createContext(path, handler);
     }
 
-    public class ActionHandler implements HttpHandler {
+    public void start() {
+        server.start();
+    }
+
+    public static class ActionHandler implements HttpHandler {
 
         private final Action action;
         private final Method method;
@@ -42,7 +49,8 @@ public class WebServer {
         public void handle(HttpExchange exchange) throws IOException {
             // Create request
             Map<String, List<String>> requestHeaders = exchange.getRequestHeaders();
-            String requestBody = exchange.getRequestBody().toString();
+            String requestBody = new BufferedReader(new InputStreamReader(exchange.getRequestBody()))
+                    .lines().collect(Collectors.joining("\n"));
             Method requestMethod = Method.valueOf(exchange.getRequestMethod());
             ActionRequest request = new ActionRequest(requestHeaders, requestBody);
 
@@ -65,6 +73,7 @@ public class WebServer {
             exchange.getResponseHeaders().putAll(response.getHeaders());
             exchange.sendResponseHeaders(HTTP_OK, response.getBody().length());
             exchange.getResponseBody().write(response.getBody().getBytes());
+            exchange.getResponseBody().close();
         }
     }
 }
